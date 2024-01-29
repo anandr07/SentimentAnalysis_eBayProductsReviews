@@ -33,7 +33,7 @@ import matplotlib.pyplot as plt
 #%%
 # Load your eBay reviews dataset
 # Replace 'your_ebay_dataset_path.csv' with the actual path to your eBay dataset
-df = pd.read_csv(r"C:\Anand\Projects_GWU\Semtiment_Analysis_ebay_product_reviews\ebay_reviews.csv\ebay_reviews.csv")
+df = pd.read_csv(r"C:\Anand\Projects_GWU\SentimentAnalysis_eBayProductsReviews\ebay_reviews.csv")
 
 # Display the head of the eBay dataset
 print(df.head())
