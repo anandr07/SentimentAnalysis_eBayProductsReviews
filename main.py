@@ -31,6 +31,9 @@ from nltk.corpus import stopwords
 from nltk.stem import SnowballStemmer
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
+from ML_algo_implemented.KNN import KNN_train_simple_cv
+from ML_algo_implemented.NaiveBayes import NaiveBayes_train_simple_cv
+from ML_algo_implemented.SGDClassifier import SGDClassifier_train_random_search_cv
 # from data_preprocessing import clean_text, preprocess_text, sentence_to_words
 
 #%%
@@ -41,6 +44,7 @@ df= pd.read_csv('ebay_reviews.csv')
 # Display the head of the eBay dataset
 print(df.head())
 
+# df = df[:1000]
 #%%
 # Number of unique categories
 num_categories = df['category'].nunique()
@@ -82,7 +86,7 @@ def clean_text(text):
     ''' This function removes punctuations, HTML tags, URLs, and Non-Alpha Numeric words.
     '''
     unwanted_chars_patterns = [
-        r'[!?,;:—".]',  # Remove punctuation
+        r'[!?,;:—".]',  # Remove punctuation 
         r'<[^>]+>',  # Remove HTML tags
         r'http[s]?://\S+',  # Remove URLs
         r"^[A-Za-z]+$" # Non-Alpha Numeric
@@ -148,467 +152,45 @@ label_encoder = LabelEncoder()
 # Fit and transform the "Review" column
 df['Review'] = label_encoder.fit_transform(df['Review'])
 
-# %%
-# Here I have implemented KNN algorithm using sklearn using BOW, tf-idf, Average word2vec and tf-idf word2vec
-import warnings
-warnings.filterwarnings("ignore")
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.model_selection import KFold
-from sklearn.model_selection import cross_val_score
-from sklearn.metrics import confusion_matrix, roc_auc_score, accuracy_score, roc_curve, auc
-import matplotlib.pyplot as plt
-import numpy as np 
-from sklearn.model_selection import train_test_split 
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics import ConfusionMatrixDisplay
-
-#%%
-#find knn to simple cross validation with Brute Force and KD-Tree
-from sklearn.metrics import roc_auc_score, accuracy_score, roc_curve, confusion_matrix
-from sklearn.model_selection import train_test_split
-from sklearn.neighbors import KNeighborsClassifier
-import matplotlib.pyplot as plt
-
-def KNN_train_simple_cv(X_train, Y_train, X_test, Y_test):
-    X_tr, X_cv, Y_tr, Y_cv = train_test_split(X_train, Y_train, test_size=0.33, random_state=0)
-
-    k = []
-    pred_cv_auc = []
-    pred_train_auc = []
-    pred_cv_accuracy = []
-    pred_train_accuracy = []
-    max_roc_auc = -1
-    best_k_auc = 0
-    best_accuracy = 0
-    for i in range(1, 24, 2):
-        knn = KNeighborsClassifier(n_neighbors=i, algorithm='brute', n_jobs=-1)
-        knn.fit(X_tr, Y_tr)
-        probs_cv = knn.predict_proba(X_cv)
-        probs_train = knn.predict_proba(X_tr)
-
-        auc_score_cv = roc_auc_score(Y_cv, probs_cv, multi_class='ovr')  # find AUC score
-        auc_score_train = roc_auc_score(Y_tr, probs_train, multi_class='ovr')
-
-        # Calculate accuracy
-        accuracy_cv = accuracy_score(Y_cv, np.argmax(probs_cv, axis=1))
-        accuracy_train = accuracy_score(Y_tr, np.argmax(probs_train, axis=1))
-
-        print(f"{i} - AUC Score (CV): {auc_score_cv}  Accuracy (CV): {accuracy_cv}")
-        pred_cv_auc.append(auc_score_cv)
-        pred_train_auc.append(auc_score_train)
-        pred_cv_accuracy.append(accuracy_cv)
-        pred_train_accuracy.append(accuracy_train)
-        k.append(i)
-
-        if max_roc_auc < auc_score_cv:
-            max_roc_auc = auc_score_cv
-            best_k_auc = i
-        if best_accuracy < accuracy_cv:
-            best_accuracy = accuracy_cv
-
-    print(f"Best k-value based on AUC: {best_k_auc}")
-    print(f"Best accuracy: {best_accuracy}")
-
-    # Plotting k vs AUC Score
-    plt.plot(k, pred_cv_auc, 'r-', label='CV AUC Score')
-    plt.plot(k, pred_train_auc, 'g-', label='Train AUC Score')
-    plt.legend(loc='upper right')
-    plt.title("k vs AUC Score")
-    plt.ylabel('AUC Score')
-    plt.xlabel('k')
-    plt.show()
-
-    # Plotting k vs Accuracy
-    plt.plot(k, pred_cv_accuracy, 'b-', label='CV Accuracy')
-    plt.plot(k, pred_train_accuracy, 'c-', label='Train Accuracy')
-    plt.legend(loc='upper right')
-    plt.title("k vs Accuracy")
-    plt.ylabel('Accuracy')
-    plt.xlabel('k')
-    plt.show()
-
-    # Confusion Matrix for best k based on accuracy
-    knn = KNeighborsClassifier(n_neighbors=best_k_auc, algorithm='brute')
-    knn.fit(X_train, Y_train)
-    probs_test = knn.predict_proba(X_test)
-    cm = confusion_matrix(Y_test, np.argmax(probs_test, axis=1))
-
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Greens)
-    plt.title('Confusion Matrix Test')
-    plt.colorbar()
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.show()
-
-    # Calculate and print AUC score
-    auc_score = roc_auc_score(Y_test, probs_test, multi_class='ovr')
-    print(f"AUC Score (Test): {auc_score}")
-
-    # Calculate and print accuracy
-    accuracy = accuracy_score(Y_test, np.argmax(probs_test, axis=1))
-    print(f"Accuracy (Test): {accuracy}")
-
-    return auc_score, accuracy
-
-
-# def KNN_train_simple_cv(X_train, Y_train, X_test, Y_test):
-#     X_tr, X_cv, Y_tr, Y_cv = train_test_split(X_train, Y_train, test_size=0.33, random_state=0)
-
-#     k = []
-#     pred_cv_auc = []
-#     pred_train_auc = []
-#     pred_cv_accuracy = []
-#     pred_train_accuracy = []
-#     max_roc_auc = -1
-#     best_k_auc = 0
-#     best_accuracy = 0
-#     for i in range(1, 24, 2):
-#         knn = KNeighborsClassifier(n_neighbors=i, algorithm='brute',n_jobs=-1)
-#         knn.fit(X_tr, Y_tr)
-#         probs_cv = knn.predict_proba(X_cv)[:, 1]
-#         probs_train = knn.predict_proba(X_tr)[:, 1]
-
-#         auc_score_cv = roc_auc_score(Y_cv, probs_cv, multi_class='ovr')  # find AUC score
-#         auc_score_train = roc_auc_score(Y_tr, probs_train, multi_class='ovr')
-
-#         # Calculate accuracy
-#         threshold = 0.5
-#         binary_preds_cv = (probs_cv > threshold).astype(int)
-#         binary_preds_train = (probs_train > threshold).astype(int)
-#         accuracy_cv = accuracy_score(Y_cv, binary_preds_cv)
-#         accuracy_train = accuracy_score(Y_tr, binary_preds_train)
-
-#         print(f"{i} - AUC Score (CV): {auc_score_cv}  Accuracy (CV): {accuracy_cv}")
-#         pred_cv_auc.append(auc_score_cv)
-#         pred_train_auc.append(auc_score_train)
-#         pred_cv_accuracy.append(accuracy_cv)
-#         pred_train_accuracy.append(accuracy_train)
-#         k.append(i)
-
-#         if max_roc_auc < auc_score_cv:
-#             max_roc_auc = auc_score_cv
-#             best_k_auc = i
-#         if best_accuracy < accuracy_cv:
-#             best_accuracy = accuracy_cv
-
-#     print(f"Best k-value based on AUC: {best_k_auc}")
-#     print(f"Best accuracy: {best_accuracy}")
-
-#     # Plotting k vs AUC Score
-#     plt.plot(k, pred_cv_auc, 'r-', label='CV AUC Score')
-#     plt.plot(k, pred_train_auc, 'g-', label='Train AUC Score')
-#     plt.legend(loc='upper right')
-#     plt.title("k vs AUC Score")
-#     plt.ylabel('AUC Score')
-#     plt.xlabel('k')
-#     plt.show()
-
-#     # Plotting k vs Accuracy
-#     plt.plot(k, pred_cv_accuracy, 'b-', label='CV Accuracy')
-#     plt.plot(k, pred_train_accuracy, 'c-', label='Train Accuracy')
-#     plt.legend(loc='upper right')
-#     plt.title("k vs Accuracy")
-#     plt.ylabel('Accuracy')
-#     plt.xlabel('k')
-#     plt.show()
-
-#     # Confusion Matrix for best k based on accuracy
-#     knn = KNeighborsClassifier(n_neighbors=best_k_auc, algorithm='brute')
-#     knn.fit(X_train, Y_train)
-#     prob_cv = knn.predict_proba(X_cv)[:, 1]
-#     binary_preds_cv = (prob_cv > threshold).astype(int)
-#     cm = confusion_matrix(Y_cv, binary_preds_cv)
-
-#     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Greens)
-#     plt.title('Confusion Matrix Train')
-#     plt.colorbar()
-#     plt.xlabel('Predicted Label')
-#     plt.ylabel('True Label')
-
-#     plt.show()
-
-#     prob_test = knn.predict_proba(X_test)[:, 1]
-#     binary_preds_test = (prob_test > threshold).astype(int)
-#     cm = confusion_matrix(Y_test, binary_preds_test)
-
-#     # Use ConfusionMatrixDisplay for visualization
-#     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
-#     disp.plot()
-#     plt.title('Confusion Matrix Test')
-#     plt.show()  
-
-#     print(Y_test,"\n")
-#     print(prob_test,"\n")
-#     print(binary_preds_test,"\n")
-
-#     # Calculate and print AUC score
-#     auc_score = roc_auc_score(Y_test, prob_test)
-#     print(f"AUC Score (Test): {auc_score}")
-
-#     # Calculate and print accuracy
-#     accuracy = accuracy_score(Y_test, binary_preds_test)
-#     print(f"Accuracy (Test): {accuracy}")
-
-#     return auc_score, accuracy
-
-
-#%%
-#NAIVE BAYE's
-from sklearn.naive_bayes import MultinomialNB
-from sklearn.metrics import roc_auc_score, accuracy_score, roc_curve, confusion_matrix
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-from sklearn.metrics import ConfusionMatrixDisplay
-from scipy import sparse
-
-def NaiveBayes_train_simple_cv(X_train, Y_train, X_test, Y_test):
-    # Split the training data for cross-validation
-    X_tr, X_cv, Y_tr, Y_cv = train_test_split(X_train, Y_train, test_size=0.33, random_state=0)
-
-    # Initialize the classifier
-    nb = MultinomialNB()
-
-    # Train the classifier
-    nb.fit(X_tr, Y_tr)
-
-    # Predict probabilities for CV and training sets
-    probs_cv = nb.predict_proba(X_cv)
-    probs_train = nb.predict_proba(X_tr)
-
-    # Calculate AUC score for CV and training sets
-    auc_score_cv = roc_auc_score(Y_cv, probs_cv, multi_class='ovr')
-    auc_score_train = roc_auc_score(Y_tr, probs_train, multi_class='ovr')
-
-    # Calculate accuracy for CV and training sets
-    accuracy_cv = accuracy_score(Y_cv, nb.predict(X_cv))
-    accuracy_train = accuracy_score(Y_tr, nb.predict(X_tr))
-
-    print(f"AUC Score (CV): {auc_score_cv}  Accuracy (CV): {accuracy_cv}")
-    print(f"AUC Score (Train): {auc_score_train}  Accuracy (Train): {accuracy_train}")
-
-    # Confusion Matrix for CV set
-    cm = confusion_matrix(Y_cv, nb.predict(X_cv))
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Greens)
-    plt.title('Confusion Matrix Train')
-    plt.colorbar()
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.show()
-
-    # Confusion Matrix for test set
-    prob_test = nb.predict_proba(X_test)
-    cm = confusion_matrix(Y_test, nb.predict(X_test))
-
-    # Use ConfusionMatrixDisplay for visualization
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.unique(Y_test))
-    disp.plot()
-    plt.title('Confusion Matrix Test')
-    plt.show()  
-
-    # Calculate and print AUC score for test set
-    auc_score = roc_auc_score(Y_test, prob_test, multi_class='ovr')
-    print(f"AUC Score (Test): {auc_score}")
-
-    # Calculate and print accuracy for test set
-    accuracy = accuracy_score(Y_test, nb.predict(X_test))
-    print(f"Accuracy (Test): {accuracy}")
-
-    return auc_score, accuracy
-
-
-# # Train Multinomial Naive Bayes model and get AUC score and accuracy
-# def NaiveBayes_train_simple_cv(X_train, Y_train, X_test, Y_test):
-#     # Split the training data for cross-validation
-#     X_tr, X_cv, Y_tr, Y_cv = train_test_split(X_train, Y_train, test_size=0.33, random_state=0)
-
-#     # Initialize the classifier
-#     nb = MultinomialNB()
-
-#     # Train the classifier
-#     nb.fit(X_tr, Y_tr)
-
-#     # Predict probabilities for CV and training sets
-#     probs_cv = nb.predict_proba(X_cv)[:, 1]
-#     probs_train = nb.predict_proba(X_tr)[:, 1]
-
-#     # Calculate AUC score for CV and training sets
-#     auc_score_cv = roc_auc_score(Y_cv, probs_cv)
-#     auc_score_train = roc_auc_score(Y_tr, probs_train)
-
-#     # Calculate accuracy for CV and training sets
-#     threshold = 0.5
-#     binary_preds_cv = (probs_cv > threshold).astype(int)
-#     binary_preds_train = (probs_train > threshold).astype(int)
-#     accuracy_cv = accuracy_score(Y_cv, binary_preds_cv)
-#     accuracy_train = accuracy_score(Y_tr, binary_preds_train)
-
-#     print(f"AUC Score (CV): {auc_score_cv}  Accuracy (CV): {accuracy_cv}")
-#     print(f"AUC Score (Train): {auc_score_train}  Accuracy (Train): {accuracy_train}")
-
-#     # Confusion Matrix for CV set
-#     cm = confusion_matrix(Y_cv, binary_preds_cv)
-#     plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Greens)
-#     plt.title('Confusion Matrix Train')
-#     plt.colorbar()
-#     plt.xlabel('Predicted Label')
-#     plt.ylabel('True Label')
-#     plt.show()
-
-#     # Confusion Matrix for test set
-#     prob_test = nb.predict_proba(X_test)[:, 1]
-#     binary_preds_test = (prob_test > threshold).astype(int)
-#     cm = confusion_matrix(Y_test, binary_preds_test)
-
-#     # Use ConfusionMatrixDisplay for visualization
-#     disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
-#     disp.plot()
-#     plt.title('Confusion Matrix Test')
-#     plt.show()  
-
-#     # Calculate and print AUC score for test set
-#     auc_score = roc_auc_score(Y_test, prob_test)
-#     print(f"AUC Score (Test): {auc_score}")
-
-#     # Calculate and print accuracy for test set
-#     accuracy = accuracy_score(Y_test, binary_preds_test)
-#     print(f"Accuracy (Test): {accuracy}")
-
-#     return auc_score, accuracy
-
-#%%
-#SGD Classifier
-#%%
-from sklearn.linear_model import SGDClassifier
-from sklearn.model_selection import RandomizedSearchCV
-from scipy.stats import loguniform
-from sklearn.metrics import make_scorer
-from sklearn.linear_model import SGDClassifier
-from sklearn.metrics import roc_auc_score, accuracy_score, confusion_matrix
-from sklearn.model_selection import train_test_split
-import matplotlib.pyplot as plt
-from sklearn.metrics import ConfusionMatrixDisplay
-
-# Assuming X_train_tfidf, Y_train, X_test_tfidf, Y_test are loaded
-
-# Define the parameter grid for Random Search CV
-param_dist = {
-    'alpha': loguniform(1e-6, 1e-1),
-    'eta0': [0.01, 0.1, 0.2, 0.5],
-}
-
-# Define custom scorer for roc_auc_score
-roc_auc_scorer = make_scorer(roc_auc_score, greater_is_better=True, needs_proba=True)
-
-# Train SGDClassifier model and perform Random Search CV
-# Train SGDClassifier model and perform Random Search CV
-def SGDClassifier_train_random_search_cv(X_train, Y_train, X_test, Y_test):
-    # Split the training data for cross-validation
-    X_tr, X_cv, Y_tr, Y_cv = train_test_split(X_train, Y_train, test_size=0.33, random_state=0)
-
-    # Initialize the classifier
-    sgd_classifier = SGDClassifier(loss='log_loss', random_state=0)
-
-    # Define RandomizedSearchCV
-    random_search = RandomizedSearchCV(sgd_classifier, param_distributions=param_dist, n_iter=10, scoring=roc_auc_scorer, cv=3, random_state=0)
-
-    # Perform RandomizedSearchCV
-    random_search.fit(X_tr, Y_tr)
-
-    # Get the best hyperparameters
-    best_params = random_search.best_params_
-    print(f"Best Hyperparameters: {best_params}")
-
-    # Use the best hyperparameters to train the final model
-    best_sgd_classifier = random_search.best_estimator_
-    best_sgd_classifier.fit(X_tr, Y_tr)
-
-    # Predict probabilities for CV and training sets
-    probs_cv = best_sgd_classifier.predict_proba(X_cv)[:, :]
-    probs_train = best_sgd_classifier.predict_proba(X_tr)[:, :]
-    print(Y_cv.shape)
-    print(probs_cv.shape)
-    # Calculate AUC score for CV and training sets
-    auc_score_cv = roc_auc_score(Y_cv, probs_cv, multi_class='ovr')
-    auc_score_train = roc_auc_score(Y_tr, probs_train, multi_class='ovr')
-
-    # Calculate accuracy for CV and training sets
-    threshold = 0.5
-    binary_preds_cv = (probs_cv > threshold).astype(int)
-    binary_preds_train = (probs_train > threshold).astype(int)
-    accuracy_cv = accuracy_score(Y_cv, best_sgd_classifier.predict(X_cv))
-    accuracy_train = accuracy_score(Y_tr, best_sgd_classifier.predict(X_tr))
-
-    print(f"AUC Score (CV): {auc_score_cv}  Accuracy (CV): {accuracy_cv}")
-    print(f"AUC Score (Train): {auc_score_train}  Accuracy (Train): {accuracy_train}")
-
-    # Confusion Matrix for CV set
-    cm = confusion_matrix(Y_cv, best_sgd_classifier.predict(X_cv))
-    plt.imshow(cm, interpolation='nearest', cmap=plt.cm.Greens)
-    plt.title('Confusion Matrix Train')
-    plt.colorbar()
-    plt.xlabel('Predicted Label')
-    plt.ylabel('True Label')
-    plt.show()
-
-    # Confusion Matrix for test set
-    prob_test = best_sgd_classifier.predict_proba(X_test)[:, :]
-    binary_preds_test = (prob_test > threshold).astype(int)
-    predicted_labels_test = best_sgd_classifier.predict(X_test)
-
-    cm = confusion_matrix(Y_test, predicted_labels_test)
-
-    # Use ConfusionMatrixDisplay for visualization
-    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=np.unique(Y_test))
-    disp.plot()
-    plt.title('Confusion Matrix Test')
-    plt.show()
-
-    print(Y_test, "\n")
-    print(prob_test, "\n")
-    print(binary_preds_test, "\n")
-
-    # Calculate and print AUC score for test set
-    auc_score = roc_auc_score(Y_test, prob_test,multi_class='ovr')
-    print(f"AUC Score (Test): {auc_score}")
-
-    # Calculate and print accuracy for test set
-    accuracy = accuracy_score(Y_test, predicted_labels_test)
-    print(f"Accuracy (Test): {accuracy}")
-
-    return auc_score, accuracy
-
-# Call the function with your data
-# SGDClassifier_train_random_search_cv(X_train_bow, Y_train, X_test_bow, Y_test)
-
 
 #%%
 # Converting sentence into words using sentence_to_words function from the data_preprocessing file
 list_of_words_in_sentence = sentence_to_words(df, 'Clean_Text')
 print(list_of_words_in_sentence)
 #%%
-# # Visualizations
-# # Assuming you have a 'Clean_Text' column after preprocessing
-# positive_text = " ".join(df[df['Review'] == "Positive"]['Clean_Text'])
-# negative_text = " ".join(df[df['Review'] == "Negative"]['Clean_Text'])
+# Visualizations
+# Assuming you have a 'Clean_Text' column after preprocessing
+positive_text = " ".join(df[df['Review'] == 2]['Clean_Text'])
+negative_text = " ".join(df[df['Review'] == 0]['Clean_Text'])
+neutral_text = " ".join(df[df['Review'] == 1]['Clean_Text'])
 
-# # Generate WordCloud for positive reviews
-# positive_wordcloud = WordCloud(width=800, height=400, background_color='white').generate(positive_text)
+# Generate WordCloud for positive reviews
+positive_wordcloud = WordCloud(width=800, height=400, background_color='white').generate(positive_text)
 
-# # Generate WordCloud for negative reviews
-# negative_wordcloud = WordCloud(width=800, height=400, background_color='black', colormap='Reds').generate(negative_text)
+# Generate WordCloud for negative reviews
+negative_wordcloud = WordCloud(width=800, height=400, background_color='black', colormap='Reds').generate(negative_text)
 
-# # Plot the WordClouds
-# plt.figure(figsize=(12, 6))
-# plt.subplot(1, 2, 1)
-# plt.imshow(positive_wordcloud, interpolation='bilinear')
-# plt.title('Word Cloud for Positive Reviews')
-# plt.axis("off")
+# Generate WordCloud for Neutral reviews
+neutral_wordcloud = WordCloud(width=800, height=400, background_color='pink', colormap='Reds').generate(neutral_text)
 
-# plt.subplot(1, 2, 2)
-# plt.imshow(negative_wordcloud, interpolation='bilinear')
-# plt.title('Word Cloud for Negative Reviews')
-# plt.axis("off")
-# plt.show()
+# Plot the WordClouds
+plt.figure(figsize=(18, 6))  # Increase the width to accommodate the third subplot
+plt.subplot(1, 3, 1)  # Modify the subplot parameters to add a third subplot
+plt.imshow(positive_wordcloud, interpolation='bilinear')
+plt.title('Word Cloud for Positive Reviews')
+plt.axis("off")
+
+plt.subplot(1, 3, 2)  # Add a third subplot for the neutral WordCloud
+plt.imshow(neutral_wordcloud, interpolation='bilinear')
+plt.title('Word Cloud for Neutral Reviews')
+plt.axis("off")
+
+plt.subplot(1, 3, 3)  # Add a third subplot for the negative WordCloud
+plt.imshow(negative_wordcloud, interpolation='bilinear')
+plt.title('Word Cloud for Negative Reviews')
+plt.axis("off")
+
+plt.show()
 
 #%%
 # Train and Test Split
@@ -757,16 +339,26 @@ auc_score_tf_idf_test_NB, accuracy_tf_idf_test_NB = NaiveBayes_train_simple_cv(X
 # %%
 # SGD Classifier on Bag of Words
 
-auc_score_bow_test_SGDC, accuracy_bow_test_SGDC = SGDClassifier_train_random_search_cv(X_train_bow_ebay, Y_train, X_test_bow_ebay, Y_test)
+auc_score_bow_test_SGDC, accuracy_bow_test_SGDC, best_sgd_classifier_bow = SGDClassifier_train_random_search_cv(X_train_bow_ebay, Y_train, X_test_bow_ebay, Y_test)
 
 #%%
 # SGD Classifier on tf-idf
 
-auc_score_tf_idf_test_SGDC, accuracy_tf_idf_test_SGDC = SGDClassifier_train_random_search_cv(X_train_tfidf, Y_train, X_test_tfidf, Y_test)
+auc_score_tf_idf_test_SGDC, accuracy_tf_idf_test_SGDC, best_sgd_classifier_tf_idf = SGDClassifier_train_random_search_cv(X_train_tfidf, Y_train, X_test_tfidf, Y_test)
 
 #%%
 # SGD Classifier on Tf-Idf word2vec 
 
-auc_score_tfidf_word2vec_test_SGDC, accuracy_tfidf_word2vec_test_SGDC = SGDClassifier_train_random_search_cv(X_train_tfidf_word2vec, Y_train_tfidf_wor2vec, X_test_tfidf_word2vec, Y_test_tfidf_wor2vec)
+auc_score_tfidf_word2vec_test_SGDC, accuracy_tfidf_word2vec_test_SGDC, best_sgd_classifier_tfidf_word2vec = SGDClassifier_train_random_search_cv(X_train_tfidf_word2vec, Y_train_tfidf_wor2vec, X_test_tfidf_word2vec, Y_test_tfidf_wor2vec)
+
+# %%
+import joblib
+
+# Assuming you have trained the SGD Classifier model and stored it in a variable named clf
+
+# Save the trained SGD Classifier model to a file named "SGDClassifier_model.pkl"
+joblib.dump(best_sgd_classifier_tfidf_word2vec, 'SGDClassifier_model.pkl')
+
+print("SGD Classifier model saved as SGDClassifier_model.pkl")
 
 # %%

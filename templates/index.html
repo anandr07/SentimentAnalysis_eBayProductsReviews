@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eBay Product Review Sentiment Analyzer</title>
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #FFCC99;
+            text-align: center;
+            margin: 50px;
+        }
+
+        h3 {
+            color: #333;
+            font-size: 45px; 
+            padding-top: 5px;
+        }
+
+        h4 {
+            color: #090808;
+            font-size: 22px; 
+            padding-top: 3px;
+        }
+
+        form {
+            background-color:#fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 50%;
+            margin: auto;
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            border: 1px solid #050505;
+            border-radius: 6px;
+            resize: none;
+            font-size: 18px;
+        }
+
+        input[type="submit"] {
+            background-color: #4caf50;
+            color: #fff;
+            padding: 10px 20px;
+            font-size: 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+            font-size: 20px;
+        }
+
+        .result {
+            margin-top: 5px;
+            margin-bottom: 20px; /* Add more margin at the bottom */
+            padding-top: 2px;
+            padding-bottom: 2px;
+            border-radius: 4px;
+            background-color: #eee;
+            max-width: 50%; /* Increase the width of the result box */
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .positive {
+            color: #4caf50;
+            font-weight: bold;
+            font-size: 30px;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+
+        .negative {
+            color: #f44336;
+            font-weight: bold;
+            font-size: 30px;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+
+        .neutral {
+            color: #1e90ff;
+            font-weight: bold;
+            font-size: 30px;
+            padding-top: 2px;
+            padding-bottom: 2px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+    <h3><u><b>eBay Product Review Sentiment Analyzer</b></u></h3>
+
+    <div>
+        <form action="/predict" method="POST">
+            <label for="review_text">Enter Product Review</label>
+            <textarea name="review_text" rows="10" cols="30" required></textarea>
+            <br>
+            <input type="submit" value="Submit">
+        </form>
+
+        <!-- Result Section -->
+        {% if prediction %}
+        <div class="result">
+            <h4><b>Prediction</b></h4>
+            <p class="{{ 'positive' if prediction == 'Positive' else 'negative' if prediction == 'Negative' else 'neutral' }}">{{ prediction }}</p>
+        </div>
+        {% endif %}
+        <!-- End Result Section -->
+    </div>
+
+</body>
+
+</html>
