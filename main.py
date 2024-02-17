@@ -357,8 +357,11 @@ import joblib
 # Assuming you have trained the SGD Classifier model and stored it in a variable named clf
 
 # Save the trained SGD Classifier model to a file named "SGDClassifier_model.pkl"
-joblib.dump(best_sgd_classifier_tfidf_word2vec, 'SGDClassifier_model.pkl')
+joblib.dump(best_sgd_classifier_tfidf_word2vec, 'Model(SGDC).pkl')
 
-print("SGD Classifier model saved as SGDClassifier_model.pkl")
+print("SGD Classifier model saved as Model(SGDC).pkl")
 
+joblib.dump(Count_vectorizer_ebay, 'CountVecEbay')
+
+print("SGD Classifier model saved as CountVecEbay.pkl")
 # %%
